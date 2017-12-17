@@ -1,86 +1,35 @@
 #include <iostream>
-#include <string>
-#include <mutex>
-#include <memory>
 
-template <typename T>
-class stack
-{
+template <class Ty>
+class stack {
+
 public:
-	stack() /*noexcept*/ noexcept; 
-	~stack()  /*noexcept*/ noexcept;
-	stack(const stack<T>&) /*strong*/;
-	stack<T>& operator =(const stack<T>&) noexcept;
-	void push(T const &) /*strong*/;
-	auto pop() -> std::shared_ptr<T>;
-	size_t size() const /*noexcept*/ noexcept;
-	bool empty() const /*noexcept*/ noexcept;
+	stack();
+	~stack()  noexcept;
+	stack(const stack<Ty>&);
+	Ty& top () const;
+	size_t size() const noexcept;
+	void push(const Ty& val);
+	void pop ();
+	bool empty() const noexcept;
+	
 private:
-	mutable std::mutex mutex_;
-	T * array_;
+
+	Ty* array_;
 	size_t array_size_;
 	size_t count_;
-	void swap(stack<T>&) /*noexcept*/ noexcept;
 };
 
-template <typename T>
-void stack<T>::swap(stack<T>& object) noexcept
-{		
-	std::lock(mutex_, object.mutex_); 
-	std::swap(object.array_size_, array_size_);
-	std::swap(count_, object.count_);
-	std::swap(object.array_, array_);
-	mutex_.unlock();
-	object.mutex_.unlock();
-}
 
-template <typename T>
-stack<T>::stack() noexcept: count_{0}, array_size_{0}, array_{nullptr} 
+
+template <typename Ty>
+void stack<Ty>::push(const Ty &value)
 {
-}
-
-template <typename T>
-stack<T>::~stack() noexcept
-{
-	delete[] array_;
-}
-
-template <typename T>
-stack<T>::stack(const stack& object)
-{
-	std::lock_guard<std::mutex> lock(object.mutex_);
-	array_size_ = object.array_size_;
-	count_ = object.count_;
-	array_= new T[count_];
-	try 
-	{
-		std::copy(object.array_,object.array_+count_, array_);
-	}
-	catch (...)
-	{ 
-      		delete[] array_;
-		throw;
-	}
-}
-
-template <typename T>
-stack<T>& stack<T>:: operator =(const stack<T>&object) noexcept
-{	
-	if (this != &object)
-	{
-		stack{object}.swap(*this);
-	}
-	return *this;
-}
-
-template <typename T>
-void stack<T>::push(T const &value)
-{
-	std::lock_guard<std::mutex> lock(mutex_);
+	
 	if (array_size_ == count_)
 	{
 		size_t array_size = array_size_ == 0 ? 1 : array_size_ * 2;
-		T *ptr = new T [array_size];
+		Ty *ptr = new Ty [array_size_];
 		try 
 		{
 			std::copy(array_, array_ + count_, ptr);
@@ -100,27 +49,51 @@ void stack<T>::push(T const &value)
 	++count_;
 }
 
-template <typename T>
-auto stack<T>::pop() -> std::shared_ptr<T> 
+
+template <class Ty>
+Ty& stack<Ty>:: top() const
 {
-	std::lock_guard<std::mutex> lock(mutex_);
-	if (count_==0) throw ("Stack is empty");
-	auto ar = std::make_shared<int>(array_[count_-1]);
-	--count_;
-	return ar;
+	return array_[count_-1];
 }
 
-template <typename T>
-size_t stack<T>::size() const noexcept
+template <class Ty>
+bool stack<Ty>:: empty() const noexcept
 {
-	std::lock_guard<std::mutex> lock(mutex_);
-
-	return count_;
-}
-
-template <typename T>
-bool stack<T>::empty() const noexcept
-{	
-	std::lock_guard<std::mutex> lock(mutex_);
 	return count_==0;
+}
+
+template <class Ty>
+stack<Ty>::stack(): count_{0}, array_size_{0}, array_{nullptr}
+{
+}
+
+template <class Ty>
+stack<Ty>:: stack(const stack<Ty>& object)
+{
+	array_size_ = object.array_size_;
+	count_ = object.count_;
+	array_=new Ty[count_];
+	std::copy(object.array_,object.array_+count_, array_);
+}
+
+template <class Ty>
+stack<Ty>::~stack() noexcept
+{
+	delete[] array_;
+}
+
+template <class Ty>
+void stack<Ty>:: pop()
+{
+	if (count_ == 0)
+	{
+		throw "logic error";
+	}
+   	--count_;
+}
+
+template <class Ty>
+size_t stack<Ty>::size() const noexcept
+{
+	return count_;
 }
